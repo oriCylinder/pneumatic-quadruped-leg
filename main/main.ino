@@ -13,7 +13,7 @@ const uint8_t sensorPins[4] = { 26, 27, 14, 12 };  //センサーの入力ピン
 const float baseGainList[4][3] = {
   { 0.0001, 0.00001, 0.000001 },
   { 0.0001, 0.00001, 0.000001 },
-  { 0.0001, 0.00001, 0.000001 }, 
+  { 0.0001, 0.00001, 0.000001 },
   { 0.0001, 0.00001, 0.000001 }
 };  //ベースのゲインリスト - { pGain, iGain, dGain }
 
@@ -49,11 +49,11 @@ void setup() {
   //各インスタンスの初期設定
   for (int i = 0; i < valveTotalNum; i++) {
     /*---
-    サーボクラスのインスタンスを初期設定
-    各モータにおけるパルス幅
-    SG90 : 500-2400(us)
-    MG90 : 1000-2000(us)
-    ---*/
+      サーボクラスのインスタンスを初期設定
+      各モータにおけるパルス幅
+      SG90 : 500-2400(us)
+      MG90 : 1000-2000(us)
+      ---*/
     valve[i].attach(valvePins[i], 1000, 2000);  //バルブの仕様を規定
     valve[i].write(90);                         //バルブ初期位置をnullポジション(90deg)に設定
 
@@ -128,7 +128,7 @@ void loop() {
         }
         break;
 
-        //REQのとき
+      //REQのとき
       case 1:
         for (int i = 0; i < valveTotalNum; i++) {  //バルブの個数だけ繰り返す
           if (dataAry[i] == 1) {                   //もしシリンダーiのCGC要求なら
@@ -144,7 +144,7 @@ void loop() {
         }
         break;
 
-        //LGC1のとき
+      //LGC1のとき
       case 10:
         vCommand[0].setGain(static_cast<uint16_t>(dataAry[0]),
                             static_cast<uint16_t>(dataAry[1]),
@@ -161,7 +161,7 @@ void loop() {
         sendDataCGC(1);  //シリンダー1のCGC送信関数を実行
         break;
 
-        //LGC3のとき
+      //LGC3のとき
       case 30:
         vCommand[2].setGain(static_cast<uint16_t>(dataAry[0]),
                             static_cast<uint16_t>(dataAry[1]),
@@ -170,7 +170,7 @@ void loop() {
         sendDataCGC(2);  //シリンダー2のCGC送信関数を実行
         break;
 
-        //LGC4のとき
+      //LGC4のとき
       case 40:
         vCommand[3].setGain(static_cast<uint16_t>(dataAry[0]),
                             static_cast<uint16_t>(dataAry[1]),
@@ -205,7 +205,7 @@ void loop() {
   //PID処理
   for (int i = 0; i < valveTotalNum; i++) {                                                //バルブの個数だけ繰り返す
     getValtageAry[i] = analogRead(sensorPins[i]);                                          //センサーの値を取得
-    int buf = map(getValtageAry[i], capturedValAry[i][0], capturedValAry[i][1], 0, 4095);  //取得値をキャプチャー値でMapping
+    int buf = map(getValtageAry[i],  capturedValAry[i][1], capturedValAry[i][0], 0, 4095); //取得値をキャプチャー値でMapping
     if (buf < 0) {                                                                         //Mappingされた値が0よ小さければ
       buf = 0;                                                                             //0に修正
     } else if (buf > 4095) {                                                               //Mappingされた値が4095より大きければ
@@ -226,21 +226,21 @@ void loop() {
 void sendDataCGC(uint8_t num) {
   const gainStruct& gain = vCommand[num].getGain();  //ゲインを格納する構造体
   const uint64_t& binaryData = pollData.dataCoupling(static_cast<uint8_t>(10 * (num + 1) + 1),
-                                                     static_cast<uint16_t>(gain.pGain),
-                                                     static_cast<uint16_t>(gain.iGain),
-                                                     static_cast<uint16_t>(gain.dGain),
-                                                     capturedValAry[num][0],
-                                                     capturedValAry[num][1]);
+                               static_cast<uint16_t>(gain.pGain),
+                               static_cast<uint16_t>(gain.iGain),
+                               static_cast<uint16_t>(gain.dGain),
+                               capturedValAry[num][0],
+                               capturedValAry[num][1]);
   pollData.sendData(binaryData);
 }
 
 void sendDataPVC(uint8_t num) {
   const uint64_t& binaryData = pollData.dataCoupling(static_cast<uint8_t>(num + 5),
-                                                     posAry[num][1],
-                                                     getValtageAry[num],
-                                                     static_cast<uint16_t>((commandAry[num] + 90.0) * 10.0),
-                                                     0,
-                                                     0);
+                               posAry[num][1],
+                               getValtageAry[num],
+                               static_cast<uint16_t>((commandAry[num] + 90.0) * 10.0),
+                               0,
+                               0);
   pollData.sendData(binaryData);
 }
 

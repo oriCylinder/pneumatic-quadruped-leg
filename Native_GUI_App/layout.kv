@@ -259,6 +259,16 @@
                                             orientation: "horizontal"
                                             spacing: 20
                                             MDSwitch:
+                                                id: input_switch
+                                                pos_hint: {'center_y': 0.5}
+                                                track_color_active: "red"
+                                                active: True
+                                            MDLabel:
+                                                text:"Input"
+                                        BoxLayout:
+                                            orientation: "horizontal"
+                                            spacing: 20
+                                            MDSwitch:
                                                 id: position_switch
                                                 pos_hint: {'center_y': 0.5}
                                                 track_color_active: "blue"

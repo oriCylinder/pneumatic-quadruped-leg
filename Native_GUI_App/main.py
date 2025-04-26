@@ -82,6 +82,7 @@ class NativeGUIApp(MDApp):
         
         #Main Screen Component
         self.graph_area = self.screen_manager.get_screen('main').ids.graph_area
+        self.input_switch = self.screen_manager.get_screen('main').ids.input_switch
         self.position_switch = self.screen_manager.get_screen('main').ids.position_switch
         self.voltage_switch = self.screen_manager.get_screen('main').ids.voltage_switch
         self.command_switch = self.screen_manager.get_screen('main').ids.command_switch
@@ -322,6 +323,7 @@ class NativeGUIApp(MDApp):
             self.target_com_line, = self.ax.plot(self.x, self.y5, label="Target>Command")  # 5本目の線
             
             self.fig.legend()
+            self.ax.set_ylim(0, 4095)
             
             self.ax.get_xaxis().set_visible(False)
             
@@ -343,7 +345,7 @@ class NativeGUIApp(MDApp):
         self.y3.pop(0)  # 古いy3値の削除
         
         # 4本目の線のy値の更新
-        self.y4.append(int(self.slider_position)) if self.position_switch.active == True else self.y4.append(None) # y4値の更新
+        self.y4.append(int(self.slider_position)) if self.position_switch.active == True & self.input_switch.active == True else self.y4.append(None) # y4値の更新
         self.y4.pop(0)  # 古いy4値の削除
         
         # 5本目の線のy値の更新

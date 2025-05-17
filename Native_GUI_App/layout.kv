@@ -23,7 +23,7 @@
                 pos_hint: {"top": 1}
 
                 MDTopAppBarTitle:
-                    text: "High-end Control Moduleと接続"
+                    text: "High-end Control Moduleと接続" # Connect to High-end Control Module
 
                 MDTopAppBarTrailingButtonContainer:
                     MDActionTopAppBarButton:
@@ -46,7 +46,7 @@
                                 MDTextFieldHintText:
                                     text: "Address"
 
-                            CustomMDButton:
+                            CustomMDButton: # This is the original connect button
                                 style: "filled"
                                 id: connect_button
                                 on_release: root.on_connect_button_press()
@@ -70,7 +70,6 @@
                 pos_hint: {"top": 1}
 
                 MDTopAppBarLeadingButtonContainer:
-
                     MDActionTopAppBarButton:
                         icon: "menu"
                         on_release: nav_drawer.set_state("toggle")
@@ -79,12 +78,11 @@
                     text: "Native GUI App"
 
                 MDTopAppBarTrailingButtonContainer:
-
                     MDActionTopAppBarButton:
                         icon: "theme-light-dark"
                         on_release: app.switch_theme_style()
 
-                    CustomMDButton:
+                    CustomMDButton: # This is the original disconnect button
                         style: "elevated"
                         id: disconnect_button
                         on_release: root.on_disconnect_button_press()
@@ -93,27 +91,88 @@
                             text: "Disconnect"
 
             MDNavigationLayout:
-
                 MDNavigationDrawer:
                     drawer_type: "standard"
-                    id: nav_drawer
+                    id: nav_drawer 
                     radius: 0, dp(16), dp(16), 0
                     BoxLayout:
                         orientation:'vertical'
                         MDNavigationDrawerMenu:
-                            id: nav_drawer_menu
+                            id: nav_drawer_menu 
                             MDNavigationDrawerLabel:
                                 text: "ActuaterList"
                         MDNavigationDrawerDivider:
+
+                        # CSV Playback Section
+                        BoxLayout:
+                            orientation: 'vertical'
+                            size_hint_y: None
+                            height: self.minimum_height 
+                            padding: "10dp", "5dp", "10dp", "10dp" 
+                            spacing: "5dp" # Reduced spacing a bit
+
+                            MDNavigationDrawerLabel:
+                                text: "CSV Motion Playback" 
+                                halign: "left"
+
+                            BoxLayout: # For Load button and Filename label
+                                orientation: 'horizontal'
+                                size_hint_y: None
+                                height: dp(48)
+                                spacing: '10dp'
+                                MDIconButton:
+                                    icon: "file-upload-outline" # Icon for loading file
+                                    on_release: app.open_csv_file_chooser_dialog()
+                                    pos_hint: {'center_y': .5}
+                                    user_font_size: "32sp" # Slightly larger icon
+                                MDLabel:
+                                    id: loaded_csv_filename_label
+                                    text: "No CSV loaded" # Initial text
+                                    halign: "left"
+                                    valign: "center"
+                                    adaptive_height: True
+                                    size_hint_x: 0.8 # Allow label to take more space
+
+
+                            BoxLayout: # For Play/Stop button and Loop switch
+                                orientation: 'horizontal'
+                                size_hint_y: None
+                                height: dp(48)
+                                spacing: '10dp'
+                                MDIconButton:
+                                    id: play_stop_csv_button
+                                    icon: "play-circle-outline" # Initial icon: play
+                                    on_release: app.toggle_csv_playback()
+                                    disabled: True # Initially disabled
+                                    pos_hint: {'center_y': .5}
+                                    user_font_size: "32sp"
+                                MDLabel:
+                                    text: "Loop:"
+                                    adaptive_height: True
+                                    valign: "center"
+                                    pos_hint: {'center_y': .5}
+                                    size_hint_x: None # Don't expand label
+                                    width: dp(60)   # Fixed width for "Loop:"
+                                MDSwitch:
+                                    id: loop_csv_switch
+                                    pos_hint: {'center_y': .5}
+                                    on_active: app.on_loop_csv_changed(self.active)
+                                    size_hint_x: None
+                                    width: dp(48)
+
+
+                        MDNavigationDrawerDivider:
+
+                        # Existing Fixed Motion section starts here
                         BoxLayout:
                             orientation:'vertical'
-                            size_hint_y: 0.3
+                            size_hint_y: 0.3 
+                            padding: "10dp", "5dp", "10dp", "10dp"
                             MDNavigationDrawerLabel:
-                                text:"Fixed motion"                                
+                                text:"Fixed motion" 
                             GridLayout:
                                 spacing: '10dp'
                                 size_hint_x: 1
-                                pos_hint: {'center_x': .5, 'center_y': .5}
                                 cols:2
                                 rows:2
                                 CustomMDButton:
@@ -153,11 +212,6 @@
                                     MDButtonText:
                                         text: "Bound"
 
-
-
-
-
-
                 MDScreenManager:
                     MDScreen:
                         radius: [25, 0, 0, 0]
@@ -179,8 +233,8 @@
                                     style: "outlined"
                                     BoxLayout:
                                         orientation: "vertical"
-                                        padding: [20, 20, 20, 20]  # 左, 上, 右, 下の順にパディングを設定
-                                        spacing: 20  # 子ウィジェット間のスペーシングを設定
+                                        padding: [20, 20, 20, 20]  
+                                        spacing: 20  
                                         BoxLayout:
                                             orientation: "horizontal"
                                             pos_hint: {"top":1}
@@ -188,7 +242,7 @@
                                                 text:"Change Gain"
                                             MDIconButton:
                                                 id: gain_reload
-                                                disabled : "True"
+                                                disabled : True 
                                                 pos_hint: {"right":1}
                                                 on_release: app.gain_request()
                                                 icon: "reload"
@@ -201,28 +255,28 @@
                                                 MDTextField:
                                                     mode: "filled"
                                                     id: gain_p
-                                                    disabled : "True"
+                                                    disabled : True
                                                     input_filter: "float"
                                                     MDTextFieldHintText:
                                                         text: "p"
                                                 MDTextField:
                                                     mode: "filled"
                                                     id: gain_i
-                                                    disabled : "True"
+                                                    disabled : True
                                                     input_filter: "float"
                                                     MDTextFieldHintText:
                                                         text: "i"
                                                 MDTextField:
                                                     mode: "filled"
                                                     id: gain_d
-                                                    disabled : "True"
+                                                    disabled : True
                                                     input_filter: "float"
                                                     MDTextFieldHintText:
                                                         text: "d"
                                             CustomMDButton:
                                                 style: "elevated"
                                                 id: gain_send
-                                                disabled : "True"
+                                                disabled : True
                                                 pos_hint: {'center_y': 0.5}
                                                 on_release: app.gain_change()
                                                 MDButtonText:
@@ -234,7 +288,7 @@
                                             CustomMDButton:
                                                 style: "filled"
                                                 id: gain_save
-                                                disabled : "True"
+                                                disabled : True
                                                 pos_hint: {"right":1}
                                                 on_release: app.gain_save()
                                                 MDButtonText:
@@ -250,8 +304,8 @@
                                     size_hint_x: .3
                                     BoxLayout:
                                         orientation: "vertical"
-                                        padding: [20, 20, 20, 20]  # 左, 上, 右, 下の順にパディングを設定
-                                        spacing: 20  # 子ウィジェット間のスペーシングを設定
+                                        padding: [20, 20, 20, 20]  
+                                        spacing: 20  
                                         MDLabel:
                                             pos_hint: {'top': 1}
                                             text:"Drawing switch"
@@ -261,7 +315,7 @@
                                             MDSwitch:
                                                 id: input_switch
                                                 pos_hint: {'center_y': 0.5}
-                                                track_color_active: "red"
+                                                # track_color_active: "red" # KivyMD uses thumb_color_active for the active switch color
                                                 active: True
                                             MDLabel:
                                                 text:"Input"
@@ -271,7 +325,7 @@
                                             MDSwitch:
                                                 id: position_switch
                                                 pos_hint: {'center_y': 0.5}
-                                                track_color_active: "blue"
+                                                # track_color_active: "blue"
                                                 active: True
                                             MDLabel:
                                                 text:"Position"
@@ -281,7 +335,7 @@
                                             MDSwitch:
                                                 id: voltage_switch
                                                 pos_hint: {'center_y': 0.5}
-                                                track_color_active: "orange"
+                                                # track_color_active: "orange"
                                                 active: True
                                             MDLabel:
                                                 text:"Voltage"
@@ -291,7 +345,7 @@
                                             MDSwitch:
                                                 id: command_switch
                                                 pos_hint: {'center_y': 0.5}
-                                                track_color_active: "green"
+                                                # track_color_active: "green"
                                                 active: True
                                             MDLabel:
                                                 text:"Command"
@@ -305,7 +359,7 @@
                                             text:"Target->Position"
                                         MDSlider:
                                             id: position_slider
-                                            disabled : "True"
+                                            disabled : True
                                             min: 0
                                             max: 4095
                                             value: 2000
@@ -316,7 +370,7 @@
                                             text:"Target->Command"
                                         MDSlider:
                                             id: command_slider
-                                            disabled : "True"
+                                            disabled : True
                                             min: 0
                                             max: 4095
                                             value: 2000
@@ -331,16 +385,14 @@
                                             CustomMDButton:
                                                 style: "filled"
                                                 id: offset_capture
-                                                disabled : "True"
-                                                
+                                                disabled : True
                                                 on_release: app.req_capture("offset")
                                                 MDButtonText:
                                                     text: "Offset"
                                             CustomMDButton:
                                                 style: "filled"
                                                 id: stroke_capture
-                                                disabled : "True"
-                                                
+                                                disabled : True
                                                 on_release: app.req_capture("stroke")
                                                 MDButtonText:
                                                     text: "Stroke"

@@ -427,19 +427,29 @@ class NativeGUIApp(MDApp):
         if self.selected_actuater != num_str_arg:
             self.selected_actuater = num_str_arg 
             self.gain_request() 
-            self.position_slider.disabled = False
-            self.command_slider.disabled = False
+            
+            # CSV再生中でなければスライダーを有効化
+            if not self.is_csv_playing:
+                self.position_slider.disabled = False
+                self.command_slider.disabled = False
+            
             self.offset_capture.disabled = False
             self.stroke_capture.disabled = False
             self.gain_reload.disabled = False
+            
             current_pos = self.position if self.position is not None else 2000
             current_cmd = self.command if self.command is not None else 2000
-            self.position_slider.value = current_pos
-            self.command_slider.value = current_cmd
-            self.slider_position = str(current_pos)
-            self.slider_command = str(current_cmd)
+            
+            # CSV再生中であれば、スライダーの値はCSVの値で上書きされるので、ここでは更新しない
+            if not self.is_csv_playing:
+                self.position_slider.value = current_pos
+                self.command_slider.value = current_cmd
+                self.slider_position = str(current_pos)
+                self.slider_command = str(current_cmd)
+            
             self.before_slider_position = self.slider_position
             self.before_slider_command = self.slider_command
+            
             if hasattr(self, 'update_event') and self.update_event: 
                 Clock.unschedule(self.update_event)
                 self.update_event = None 
@@ -504,7 +514,9 @@ class NativeGUIApp(MDApp):
             if hasattr(self.fig, 'canvas') and self.fig.canvas:
                 self.fig.canvas.draw()
                 self.fig.canvas.flush_events()
-        if hasattr(self, 'dynamicUdpSocket') and self.dynamicUdpSocket:
+        
+        # CSV再生中でない場合のみスライダーからのデータを送信
+        if hasattr(self, 'dynamicUdpSocket') and self.dynamicUdpSocket and not self.is_csv_playing:
             try:
                 val_pos_to_send = str(self.slider_position)
                 val_cmd_to_send = str(self.slider_command)
@@ -610,8 +622,6 @@ class NativeGUIApp(MDApp):
             content_widget.bind(minimum_height=content_widget.setter('height'))
             content_widget.add_widget(self.file_path_input_field)
 
-            # Using MDButton with MDButtonText and style="text" for dialog actions
-            # This is based on KivyMD 2.0.1 documentation for MDDialog anatomy (p.161)
             cancel_button = MDButton(
                 MDButtonText(text="CANCEL"),
                 style="text",
@@ -631,14 +641,12 @@ class NativeGUIApp(MDApp):
             )
 
             self._file_path_input_dialog = MDDialog(
-                MDDialogHeadlineText(text="Load CSV File"), # Set title using MDDialogHeadlineText
-                MDDialogContentContainer(content_widget),  # Add content wrapped in its container
-                button_container                            # Add button container
+                MDDialogHeadlineText(text="Load CSV File"), 
+                MDDialogContentContainer(content_widget),  
+                button_container                            
             )
         else: 
             self.file_path_input_field.text = self.csv_file_path if self.csv_file_path else os.getcwd()
-            # If dialog is reused, ensure its content is up-to-date or reconstruct if necessary.
-            # For this case, just updating the text field path might be sufficient.
             
         self._file_path_input_dialog.open()
 
@@ -674,13 +682,20 @@ class NativeGUIApp(MDApp):
                         self._reset_csv_state()
                         if hasattr(self, 'loaded_csv_filename_label'): self.loaded_csv_filename_label.text = "Load failed"
                         return 
-                    try:
-                        temp_data_list.append([int(value_str) for value_str in row_list]) 
-                    except ValueError:
-                        self.show_snackbar(f"CSV contains non-integer data in row {i_row+2}: {row_list}")
-                        self._reset_csv_state()
-                        if hasattr(self, 'loaded_csv_filename_label'): self.loaded_csv_filename_label.text = "Parse error"
-                        return 
+                    
+                    processed_row = []
+                    for value_str in row_list:
+                        if value_str.strip() == "": # 空白の場合はそのまま追加
+                            processed_row.append("")
+                        else:
+                            try:
+                                processed_row.append(int(value_str)) # 数値に変換
+                            except ValueError:
+                                self.show_snackbar(f"CSV contains non-integer data in row {i_row+2}: {value_str}")
+                                self._reset_csv_state()
+                                if hasattr(self, 'loaded_csv_filename_label'): self.loaded_csv_filename_label.text = "Parse error"
+                                return
+                    temp_data_list.append(processed_row)
             
             self.csv_data = temp_data_list
             self.csv_file_path = file_path_arg 
@@ -710,6 +725,11 @@ class NativeGUIApp(MDApp):
             self.play_stop_csv_button.disabled = True
             self.play_stop_csv_button.icon = "play-circle-outline"
         self.is_csv_playing = False
+        # CSV再生が停止したらスライダーを有効に戻す
+        if hasattr(self, 'position_slider'):
+            self.position_slider.disabled = False
+        if hasattr(self, 'command_slider'):
+            self.command_slider.disabled = False
 
 
     def toggle_csv_playback(self):
@@ -724,7 +744,10 @@ class NativeGUIApp(MDApp):
         self.is_csv_playing = not self.is_csv_playing
 
         if self.is_csv_playing:
-            self.play_stop_csv_button.icon = "stop-circle-outline" 
+            self.play_stop_csv_button.icon = "stop-circle-outline"
+            # CSV再生中はスライダーを無効化
+            self.position_slider.disabled = True
+            self.command_slider.disabled = True
             csv_stop_event.clear() 
             if self.csv_playback_thread is None or not self.csv_playback_thread.is_alive():
                 if self.current_csv_row_index >= len(self.csv_data) and not self.loop_csv: 
@@ -735,6 +758,9 @@ class NativeGUIApp(MDApp):
                 self.csv_playback_thread.start()
         else:
             self.play_stop_csv_button.icon = "play-circle-outline" 
+            # CSV再生が停止したらスライダーを有効に戻す
+            self.position_slider.disabled = False
+            self.command_slider.disabled = False
             csv_stop_event.set() 
 
 
@@ -753,36 +779,50 @@ class NativeGUIApp(MDApp):
                     Clock.schedule_once(lambda dt: self._stop_csv_playback_ui_update(finished=True))
                     break 
             
-            if not self.csv_data or self.current_csv_row_index >= len(self.csv_data):
+            if not self.csv_data or self.current_csv_row_index >= len(self.csv_data): # 再度チェック
                 Clock.schedule_once(lambda dt: self._stop_csv_playback_ui_update(finished=not self.loop_csv))
                 break
 
             row_data_list = self.csv_data[self.current_csv_row_index] 
             
-            positions_to_send_list = [] 
-            for i_actuator, value_actuator in enumerate(row_data_list): 
-                positions_to_send_list.append({"num": str(i_actuator), "value": int(value_actuator)}) 
+            for i_actuator, value_actuator in enumerate(row_data_list):
+                # 値が空文字列でなければ送信処理
+                if value_actuator != "":
+                    # CSVの値をスライダーに同期 (選択中のアクチュエータのみ)
+                    if str(i_actuator) == self.selected_actuater:
+                        # `main2.py` の `set_target_value` は position と command を区別している
+                        # CSVの列がどちらに対応するかの情報が必要だが、ここでは仮に position として扱う
+                        # 必要であれば、CSVのフォーマットや送信ロジックでこれを区別する
+                        Clock.schedule_once(lambda dt, val=value_actuator: setattr(self, 'slider_position', str(val)))
+                        # Clock.schedule_once(lambda dt, val=value_actuator: setattr(self.position_slider, 'value', int(val)))
 
-            if positions_to_send_list:
-                data_payload_dict = {"type": "set_target_value", "position": positions_to_send_list} 
-                try:
-                    if hasattr(self, 'dynamicUdpSocket') and self.dynamicUdpSocket:
-                        self.dynamicUdpSocket.sendto(json.dumps(data_payload_dict).encode('utf-8'), (self.address, 6060))
-                    else: 
-                        Clock.schedule_once(lambda dt: self.show_snackbar("UDP connection lost during CSV playback."))
-                        Clock.schedule_once(lambda dt: self._stop_csv_playback_ui_update()) 
+
+                    data_payload_dict = {
+                        "type": "set_target_value",
+                        "position": [{"num": str(i_actuator), "value": int(value_actuator)}]
+                        # 必要に応じて "command" も同様に処理
+                    }
+                    try:
+                        if hasattr(self, 'dynamicUdpSocket') and self.dynamicUdpSocket:
+                            self.dynamicUdpSocket.sendto(json.dumps(data_payload_dict).encode('utf-8'), (self.address, 6060))
+                            print(f"Sent CSV data: {data_payload_dict}") # デバッグ用に追加
+                        else: 
+                            Clock.schedule_once(lambda dt: self.show_snackbar("UDP connection lost during CSV playback."))
+                            Clock.schedule_once(lambda dt: self._stop_csv_playback_ui_update()) 
+                            break 
+                    except socket.error as e_sock: 
+                        print(f"Socket error sending CSV data for actuator {i_actuator}: {e_sock}")
+                        Clock.schedule_once(lambda dt, emsg=str(e_sock): self.show_snackbar(f"UDP Send Error: {emsg}"))
+                        Clock.schedule_once(lambda dt: self._stop_csv_playback_ui_update())
+                        break 
+                    except Exception as e_generic: 
+                        print(f"Error sending CSV data for actuator {i_actuator}: {e_generic}")
+                        Clock.schedule_once(lambda dt, emsg=str(e_generic): self.show_snackbar(f"CSV Send Error: {emsg}"))
+                        Clock.schedule_once(lambda dt: self._stop_csv_playback_ui_update())
                         break
-                except socket.error as e_sock: 
-                    print(f"Socket error sending CSV data: {e_sock}")
-                    Clock.schedule_once(lambda dt, emsg=str(e_sock): self.show_snackbar(f"UDP Send Error: {emsg}"))
-                    Clock.schedule_once(lambda dt: self._stop_csv_playback_ui_update())
-                    break 
-                except Exception as e_generic: 
-                    print(f"Error sending CSV data: {e_generic}")
-                    Clock.schedule_once(lambda dt, emsg=str(e_generic): self.show_snackbar(f"CSV Send Error: {emsg}"))
-                    Clock.schedule_once(lambda dt: self._stop_csv_playback_ui_update())
-                    break
-
+            
+            if not self.is_csv_playing or csv_stop_event.is_set(): # ループの途中で停止された場合
+                break
 
             self.current_csv_row_index += 1
             time.sleep(playback_delay) 
@@ -795,6 +835,12 @@ class NativeGUIApp(MDApp):
         self.is_csv_playing = False 
         if hasattr(self, 'play_stop_csv_button'): 
             self.play_stop_csv_button.icon = "play-circle-outline" 
+        # CSV再生が停止したらスライダーを有効に戻す
+        if hasattr(self, 'position_slider'):
+            self.position_slider.disabled = False
+        if hasattr(self, 'command_slider'):
+            self.command_slider.disabled = False
+
         if finished:
             self.show_snackbar("CSV playback finished.")
             self.current_csv_row_index = 0 
@@ -807,7 +853,7 @@ class NativeGUIApp(MDApp):
         self.settings_manager.update_setting('csv_loop_enabled', self.loop_csv)
         self.show_snackbar(f"Loop CSV: {'Enabled' if self.loop_csv else 'Disabled'}")
     
-class SettingsManager: # Using the more robust version from CSV-enabled code
+class SettingsManager: 
     path = os.path.join(rootdir, 'settings.json')
     def __init__(self, filename=path): 
         self.filename = filename
@@ -830,7 +876,7 @@ class SettingsManager: # Using the more robust version from CSV-enabled code
                 },
                 "csv_loop_enabled": False, 
                 "last_csv_path": "",
-                "selected_actuater_default": "0" # Added this for consistency      
+                "selected_actuater_default": "0"      
             }
         return settings_dict
 
@@ -847,16 +893,15 @@ class SettingsManager: # Using the more robust version from CSV-enabled code
     def get_setting(self, key_str, default_any=None): 
         return self.settings.get(key_str, default_any)
     
-# Restoring NonInteractiveCard and CustomMDButton from older main.py
 class NonInteractiveCard(MDCard):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.padding = [10, 10, 10, 10]  # 左、上、右、下の順に余白を設定 (Set padding: left, top, right, bottom)
-    def set_properties_widget(self): # This was in older main.py, but not standard KivyMD
+        self.padding = [10, 10, 10, 10]  
+    def set_properties_widget(self): 
         return False
     
 class CustomMDButton(MDButton):
-    def on_touch_down(self, touch): # This was in older main.py
+    def on_touch_down(self, touch): 
         if self.disabled:
             return False
         return super().on_touch_down(touch)

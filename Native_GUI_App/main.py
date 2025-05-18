@@ -341,11 +341,11 @@ class NativeGUIApp(MDApp):
             return
         self.switch_gain_window(True)
         try:
-            num_to_send = int(self.selected_actuater)
+            num_to_send = str(self.selected_actuater) # Ensure num is sent as string
             data = {"type": "request_gain_value", "num": num_to_send}
             self.dynamicUdpSocket.sendto(json.dumps(data).encode('utf-8'), (self.address, 6060))
             print(f"Sent gain request: {data}")
-        except ValueError:
+        except ValueError: # Should not happen if selected_actuater is always a string
             self.show_snackbar("Invalid actuator ID for gain request.")
         except socket.error as e:
             self.show_snackbar(f"UDP Send Error: {e}")
@@ -376,7 +376,7 @@ class NativeGUIApp(MDApp):
             p_val = float(self.p_field.text)
             i_val = float(self.i_field.text)
             d_val = float(self.d_field.text)
-            num_to_send = int(self.selected_actuater) 
+            num_to_send = str(self.selected_actuater) # MODIFIED: Send num as string
         except ValueError:
             self.show_snackbar("Invalid gain values or actuator ID.")
             return
@@ -396,12 +396,12 @@ class NativeGUIApp(MDApp):
             return
         self.switch_gain_window(True)
         try:
-            num_to_send = int(self.selected_actuater) 
+            num_to_send = str(self.selected_actuater) # MODIFIED: Send num as string
             data = {"type":"request_gain_save","num": num_to_send}
             self.dynamicUdpSocket.sendto(json.dumps(data).encode('utf-8'), (self.address,6060))
             self.show_snackbar(f"Gain save requesting...")
             print(f"Sent gain save: {data}")
-        except ValueError:
+        except ValueError: # Should not happen
             self.show_snackbar("Invalid actuator ID for gain save.")
             self.switch_gain_window(False)
         except socket.error as e:
@@ -413,12 +413,12 @@ class NativeGUIApp(MDApp):
             self.show_snackbar("Not connected. Cannot request capture.")
             return
         try:
-            num_to_send = int(self.selected_actuater) 
+            num_to_send = str(self.selected_actuater) # MODIFIED: Send num as string
             data = {"type":"request_capture","num": num_to_send, "capture": capture_type_arg}
             self.dynamicUdpSocket.sendto(json.dumps(data).encode('utf-8'), (self.address,6060))
             self.show_snackbar(f"Capture requesting... ⇒  {capture_type_arg}")
             print(f"Sent capture request: {data}")
-        except ValueError:
+        except ValueError: # Should not happen
             self.show_snackbar("Invalid actuator ID for capture request.")
         except socket.error as e:
             self.show_snackbar(f"UDP Send Error: {e}")
@@ -506,8 +506,8 @@ class NativeGUIApp(MDApp):
                 self.fig.canvas.flush_events()
         if hasattr(self, 'dynamicUdpSocket') and self.dynamicUdpSocket:
             try:
-                val_pos_to_send = int(float(self.slider_position))
-                val_cmd_to_send = int(float(self.slider_command))
+                val_pos_to_send = str(self.slider_position)
+                val_cmd_to_send = str(self.slider_command)
                 if self.before_slider_position != self.slider_position:
                     data = {"type":"set_target_value","position":[{"num": str(self.selected_actuater),"value": val_pos_to_send}]}
                     self.dynamicUdpSocket.sendto(json.dumps(data).encode('utf-8'), (self.address,6060))

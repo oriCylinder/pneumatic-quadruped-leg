@@ -14,5 +14,5 @@
     },
     "csv_loop_enabled": false,
     "last_csv_path": "C:\\Users\\nat-maeda\\Documents\\GitHub\\pneumatic-quadruped-leg\\Native_GUI_App\\debug_test\\test_motion.csv",
-    "selected_actuater_default": "0"
+    "selected_actuater_default": "1"
 }

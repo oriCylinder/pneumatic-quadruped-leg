@@ -691,13 +691,21 @@ class NativeGUIApp(MDApp):
         self._file_path_input_dialog.open()
 
     def _process_csv_path_from_dialog(self, *args):
-        path_str = self.file_path_input_field.text.strip() 
+        try:
+            path_str = self.file_path_input_field.text.strip()
+        except Exception as e:
+            self.show_snackbar(f"Error reading file path: {e}")
+            return
         if os.path.exists(path_str) and path_str.lower().endswith(".csv"):
             self._load_csv_data(path_str)
             if self._file_path_input_dialog: 
                 self._file_path_input_dialog.dismiss()
         else:
-            self.show_snackbar(f"Invalid file: '{os.path.basename(path_str)}'. Must be an existing .csv file.")
+            try:
+                filename = os.path.basename(path_str)
+            except Exception:
+                filename = str(path_str)
+            self.show_snackbar(f"Invalid file: '{filename}'. Must be an existing .csv file.")
 
     def _load_csv_data(self, file_path_arg): 
         if not file_path_arg:
@@ -802,6 +810,7 @@ class NativeGUIApp(MDApp):
 
 
     def csv_playback_loop(self):
+        import concurrent.futures
         playback_delay = 1.0 / 30.0  
         
         while self.is_csv_playing and not csv_stop_event.is_set():
@@ -821,14 +830,11 @@ class NativeGUIApp(MDApp):
                 break
 
             row_data_list = self.csv_data[self.current_csv_row_index] 
-            
-            for i_actuator, value_actuator in enumerate(row_data_list):
-                if value_actuator != "": # 値が空文字列でなければ送信処理
-                    # CSVの値をスライダーに同期 (選択中のアクチュエータのみ)
-                    if str(i_actuator) == str(self.selected_actuater): # selected_actuater は int なので str() で比較
+
+            def send_udp(i_actuator, value_actuator):
+                if value_actuator != "":
+                    if str(i_actuator) == str(self.selected_actuater):
                         Clock.schedule_once(lambda dt, val=value_actuator: setattr(self, 'slider_position', str(val)))
-
-
                     data_payload_dict = {
                         "type": "set_target_value",
                         "position": [{"num": str(i_actuator), "value": int(value_actuator)}]
@@ -839,18 +845,22 @@ class NativeGUIApp(MDApp):
                         else: 
                             Clock.schedule_once(lambda dt: self.show_snackbar("UDP connection lost during CSV playback."))
                             Clock.schedule_once(lambda dt: self._stop_csv_playback_ui_update()) 
-                            break 
                     except socket.error as e_sock: 
                         print(f"Socket error sending CSV data for actuator {i_actuator}: {e_sock}")
                         Clock.schedule_once(lambda dt, emsg=str(e_sock): self.show_snackbar(f"UDP Send Error: {emsg}"))
                         Clock.schedule_once(lambda dt: self._stop_csv_playback_ui_update())
-                        break 
                     except Exception as e_generic: 
                         print(f"Error sending CSV data for actuator {i_actuator}: {e_generic}")
                         Clock.schedule_once(lambda dt, emsg=str(e_generic): self.show_snackbar(f"CSV Send Error: {emsg}"))
                         Clock.schedule_once(lambda dt: self._stop_csv_playback_ui_update())
-                        break
-            
+
+            # 並列送信
+            with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+                futures = []
+                for i_actuator, value_actuator in enumerate(row_data_list):
+                    futures.append(executor.submit(send_udp, i_actuator, value_actuator))
+                concurrent.futures.wait(futures)
+
             if not self.is_csv_playing or csv_stop_event.is_set(): 
                 break
 
